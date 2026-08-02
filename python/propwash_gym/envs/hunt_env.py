@@ -76,8 +76,10 @@ class HuntEnv(PropwashEnv):
     """Collect every target in a randomised layout without crashing.
 
     Args:
-        spread_override: Force the placement radius, for tests.
-        **kwargs: Forwarded to :class:`PropwashEnv`.
+        spread_override: Force the placement radius, for tests. Bypasses the
+            curriculum's spread scaling entirely.
+        **kwargs: Forwarded to :class:`PropwashEnv`. Passing ``wind_scale``
+            explicitly pins wind and opts out of difficulty-scaled wind.
     """
 
     def __init__(self, spread_override: float | None = None, **kwargs) -> None:
@@ -85,6 +87,10 @@ class HuntEnv(PropwashEnv):
         self.next_index = 0
         self._all_cleared = False
         self._spread_override = spread_override
+        # An explicitly supplied wind_scale must survive reset(). Difficulty
+        # otherwise drives wind, but silently discarding a constructor argument
+        # is worse than not offering it.
+        self._wind_override = kwargs.get("wind_scale")
         super().__init__(**kwargs)
 
     @property
@@ -99,7 +105,8 @@ class HuntEnv(PropwashEnv):
 
     def _task_reset(self) -> None:
         """Roll a fresh layout and scale wind with difficulty."""
-        self.physics.wind_scale = MAX_WIND * self.difficulty
+        if self._wind_override is None:
+            self.physics.wind_scale = MAX_WIND * self.difficulty
         self.next_index = 0
         self._all_cleared = False
         self.targets = self._layout()

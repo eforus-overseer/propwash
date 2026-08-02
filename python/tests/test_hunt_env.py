@@ -5,6 +5,7 @@ import pytest
 
 from propwash_gym.envs.hunt_env import (
     COLLECT_PAD,
+    MAX_WIND,
     MAX_TARGETS,
     MIN_ORIGIN_DISTANCE,
     HuntEnv,
@@ -123,3 +124,40 @@ def test_info_reports_progress():
     _, _, _, _, info = env.step(np.array([0.2, 0, 0, 0], np.float32))
     assert info["targets_collected"] == 0
     assert info["targets_total"] == MAX_TARGETS
+
+
+def test_explicit_wind_scale_survives_reset():
+    """A constructor argument must not be silently discarded.
+
+    Difficulty otherwise drives wind, but an env built with `wind_scale=0.5`
+    that quietly flies at 0.7 from the first reset is the kind of thing that
+    costs an afternoon to find.
+    """
+    env = _env(wind_scale=0.5)
+    env.reset(seed=0, options={"difficulty": 1.0})
+    assert pytest.approx(0.5) == env.physics.wind_scale
+
+
+def test_wind_scales_with_difficulty_when_not_overridden():
+    calm = _env()
+    calm.reset(seed=0, options={"difficulty": 0.0})
+    assert pytest.approx(0.0) == calm.physics.wind_scale
+
+    windy = _env()
+    windy.reset(seed=0, options={"difficulty": 1.0})
+    assert pytest.approx(MAX_WIND) == windy.physics.wind_scale
+
+
+def test_difficulty_persists_when_reset_omits_it():
+    """Documented trap: a bare reset() inherits the previous difficulty.
+
+    Gymnasium's vector-env autoreset calls `reset()` with no options, so a
+    curriculum must pass difficulty on every reset rather than relying on the
+    env to remember or to default.
+    """
+    env = _env()
+    env.reset(seed=0, options={"difficulty": 0.0})
+    assert len(env.targets) == 1
+    env.reset(seed=1)                      # no options
+    assert env.difficulty == 0.0
+    assert len(env.targets) == 1, "inherited difficulty, not reset to full"
