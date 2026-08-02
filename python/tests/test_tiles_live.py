@@ -4,6 +4,7 @@ Marked ``network`` and skipped when unreachable, so the default suite stays
 offline. Run explicitly with:  pytest -m network
 """
 
+import numpy as np
 import pytest
 
 from propwash_gym.world.locations import get_location
@@ -77,3 +78,43 @@ def test_bora_bora_water_level_sits_between_floor_and_peak(cache):
         pytest.skip("tiles unavailable")
     assert hf.water_z is not None
     assert float(hf.heights.min()) < hf.water_z < float(hf.heights.max())
+
+
+def test_imagery_axis_order_is_pinned_by_content_not_just_shape(cache):
+    """A z/y/x-vs-z/x/y swap returns a valid 256x256 image of the wrong place.
+
+    Shape alone cannot detect that. Compare the correctly-ordered tile against
+    the deliberately transposed one: they must differ. This is the imagery
+    counterpart to the DEM elevation-range checks, which already catch a swap.
+    """
+    loc = get_location("negev")
+    x = int(lon_to_tile(loc.lon, 15))
+    y = int(lat_to_tile(loc.lat, 15))
+
+    correct = cache.get_imagery(15, x, y)
+    if correct is None:
+        pytest.skip("imagery provider unreachable")
+    swapped = cache.get_imagery(15, y, x)   # transposed on purpose
+    if swapped is None:
+        pytest.skip("transposed tile unavailable, cannot compare")
+
+    assert correct.shape == (256, 256, 3)
+    assert not np.array_equal(correct, swapped), (
+        "the correctly-ordered imagery tile is identical to the transposed one; "
+        "the axis order is not actually being exercised"
+    )
+
+
+def test_assembled_alps_field_has_real_alpine_relief(cache):
+    """Bound the cropped heightfield, not just a single tile.
+
+    The parametrized decode test only ever inspects one tile, so nothing
+    otherwise constrains the assembled field. Grindelwald's valley walls climb
+    hundreds of metres, which is the whole reason this location is interesting.
+    """
+    hf = build_heightfield("alps", cache=cache)
+    if hf.source != "dem":
+        pytest.skip("tiles unavailable")
+    relief = float(hf.heights.max() - hf.heights.min())
+    assert relief > 800.0, f"expected serious alpine relief, got {relief:.0f} m"
+    assert 500.0 < float(hf.height(0.0, 0.0)) < 2500.0, "origin should be in the valley"
