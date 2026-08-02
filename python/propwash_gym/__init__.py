@@ -1,7 +1,7 @@
 """propwash-gym — a Gymnasium RL environment on real satellite terrain.
 
-Importing this package registers the environment IDs with Gymnasium's global
-registry. Env variants are added in a later task.
+Environment registration is added in a later task; this module currently only
+exposes the package version.
 """
 
 from __future__ import annotations
