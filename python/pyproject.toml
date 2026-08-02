@@ -26,3 +26,7 @@ include = ["propwash_gym*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "network: hits live tile providers; deselect with '-m \"not network\"'",
+]
+addopts = "-m 'not network'"
