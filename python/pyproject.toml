@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "propwash-gym"
+version = "0.1.0"
+description = "Gymnasium RL environment for the PROP//WASH FPV drone simulator, on real satellite terrain."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "gymnasium>=0.29",
+    "numpy>=1.23",
+    "pillow>=10.0",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+# Training extras, kept optional so `import propwash_gym` stays framework-free.
+rl = ["stable-baselines3>=2.3"]
+
+[tool.setuptools.packages.find]
+include = ["propwash_gym*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
