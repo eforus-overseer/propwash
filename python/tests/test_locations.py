@@ -60,3 +60,30 @@ def test_alps_is_taller_than_sahara():
     alps = procedural_heights("alps", size=64, seed=3)
     sahara = procedural_heights("sahara", size=64, seed=3)
     assert alps.max() > sahara.max()
+
+
+def test_water_locations_get_bathymetry_in_the_procedural_fallback():
+    """Offline Bora Bora must still have a lagoon.
+
+    Real terrarium tiles encode bathymetry, so the DEM spans deep negatives up
+    to dry peaks. Plain noise is non-negative, so without a shift the offline
+    island would be entirely dry — losing the splash-crash mechanic on the very
+    path CI uses, and no existing test would fail.
+    """
+    h = procedural_heights("borabora", size=64, seed=3)
+    assert h.min() < 0.0, "expected water below sea level"
+    assert h.max() > 0.0, "expected dry land above sea level"
+    submerged = float((h < 0.0).mean())
+    assert 0.3 < submerged < 0.6, f"expected a real lagoon, got {submerged:.0%} wet"
+
+
+def test_dry_locations_stay_entirely_above_sea_level():
+    for key in ("negev", "alps", "cascades", "canyon", "iceland", "sahara"):
+        h = procedural_heights(key, size=32, seed=3)
+        assert h.min() >= 0.0, f"{key} should have no water"
+
+
+def test_water_shift_preserves_determinism():
+    a = procedural_heights("borabora", size=32, seed=12)
+    b = procedural_heights("borabora", size=32, seed=12)
+    np.testing.assert_array_equal(a, b)
