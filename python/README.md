@@ -5,9 +5,15 @@ A Gymnasium reinforcement-learning environment built from the
 quaternion rigid-body physics, and a 4S LiPo battery that sags under load.
 
 The browser simulator is **not** in the training loop. This package fetches the
-same Esri imagery and AWS terrarium elevation tiles, caches them to disk, and
+same AWS terrarium elevation tiles the browser streams, caches them to disk, and
 samples them as NumPy arrays — so training runs in-process at thousands of steps
 per second instead of the tens a browser bridge would allow.
+
+Scope note: only the **elevation** tiles feed the simulation. `TileCache` can
+fetch Esri satellite imagery too (and is live-tested against it), but no code
+path turns imagery into an observation yet — the `rgb` perception mode is a
+ray-march over the heightfield, not photography. Wiring imagery into the texture
+is future work.
 
 ## Install
 
@@ -41,6 +47,11 @@ python examples/fetch_tiles.py
 | `PropwashHuntRGB-v0` | `(3,64,64)` uint8 | needs `CnnPolicy` |
 | `PropwashHuntDepth-v0` | `(1,64,64)` float32 | needs `CnnPolicy` |
 
+**The pixel variants are not currently practical for training.** `_pixel_obs`
+ray-marches 64x64 rays x 24 samples in nested Python loops, measured at about
+**8 steps/sec** against roughly 5000 for the state variants. A run that looks
+hung is just slow. Keep training on `state` until this is vectorised.
+
 Pass `location=` to fly any of the seven places: `negev`, `alps`, `cascades`,
 `canyon`, `iceland`, `borabora`, `sahara`.
 
@@ -68,8 +79,10 @@ Two details matter for learnability, both carried over from the sibling
 
 1. **Dense progress shaping.** `ProgressReward` pays for distance closed each
    step. Absolute distance penalties are too sparse and stall at zero success.
-2. **Start easy.** `CurriculumWrapper(start_difficulty=0.0)` begins in a flat,
+2. **Start easy.** `CurriculumWrapper(start_difficulty=0.0)` begins in a
    windless, single-target arena and advances on the recent success rate.
+   Note difficulty scales target count, spread, and wind — the terrain is real
+   DEM at every difficulty, so even difficulty 0 flies genuine relief.
    Training directly at full difficulty does not converge.
 
 ## Testing

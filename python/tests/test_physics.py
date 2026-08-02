@@ -6,6 +6,7 @@ import pytest
 from propwash_gym.core.battery import Battery
 from propwash_gym.core.flight_ctrl import FlightController
 from propwash_gym.core.physics import (
+    CEILING_AGL_M,
     DRAG_K,
     GRAVITY,
     MASS,
@@ -67,6 +68,9 @@ def test_full_throttle_climbs():
 
 def test_drag_bounds_terminal_velocity():
     p = _phys()
+    # Needs a long fall to converge, so lift the ceiling for this check: the
+    # subject here is drag, not the arena bound.
+    p.spawn_ground = 5000.0
     s = _airborne(z=5000.0)
     for _ in range(4000):
         p.step(s, throttle=0.0, roll=0.0, pitch=0.0, yaw=0.0, dt=0.02)
@@ -172,3 +176,29 @@ def test_stepping_is_deterministic():
         a.step(sa, 0.4, 0.1, 0.2, 0.05, 0.02)
         b.step(sb, 0.4, 0.1, 0.2, 0.05, 0.02)
     np.testing.assert_array_equal(sa.position, sb.position)
+
+
+def test_climbing_past_the_ceiling_ends_the_episode():
+    """A flyaway must be terminal, or it becomes the optimal policy.
+
+    The browser has no ceiling because a human pilot wants to come back. A
+    random policy averages ~2x hover throttle, so unbounded it climbs away and
+    never crashes: measured 1843 m at full throttle, terminating only when the
+    battery died. That dodges every terrain penalty.
+    """
+    p = _phys(_flat(0.0))
+    s = _airborne(z=CEILING_AGL_M - 5.0)
+    assert p.step(s, 1.0, 0.0, 0.0, 0.0, 0.02) is None, "below the ceiling is fine"
+
+    s.position[2] = CEILING_AGL_M + 1.0
+    assert p.step(s, 1.0, 0.0, 0.0, 0.0, 0.02) is CrashReason.OUT_OF_BOUNDS
+
+
+def test_the_ceiling_is_relative_to_the_launch_terrain():
+    """Grindelwald spawns near 1000 m, so an absolute limit would be unusable."""
+    p = _phys(_flat(900.0))
+    assert pytest.approx(900.0) == p.spawn_ground
+    s = _airborne(z=900.0 + CEILING_AGL_M - 5.0)
+    assert p.step(s, 0.5, 0.0, 0.0, 0.0, 0.02) is None
+    s.position[2] = 900.0 + CEILING_AGL_M + 1.0
+    assert p.step(s, 0.5, 0.0, 0.0, 0.0, 0.02) is CrashReason.OUT_OF_BOUNDS

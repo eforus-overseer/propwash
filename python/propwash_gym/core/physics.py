@@ -36,6 +36,16 @@ CRASH_SPEED_MS = 9.0
 GROUND_BOUNCE_DAMPING = 0.6
 #: Distance from the arena edge that terminates an episode.
 ARENA_MARGIN_M = 10.0
+#: Height above the spawn terrain beyond which the episode ends out of bounds.
+#:
+#: The browser has no ceiling because a human pilot wants to come back. An RL
+#: agent has no such preference: a random policy averages roughly twice hover
+#: throttle, so the default behaviour is to climb away and never crash. Measured
+#: unbounded, full throttle reaches 1843 m and terminates only when the battery
+#: dies — a degenerate strategy that dodges every terrain penalty. 400 m is well
+#: clear of the tallest real relief in the flyable patches (Grindelwald's valley
+#: walls span ~1400 m of DEM, but only ~400 m above a valley-floor spawn).
+CEILING_AGL_M = 400.0
 
 
 class CrashReason(enum.Enum):
@@ -67,6 +77,9 @@ class Physics:
         self.controller = controller
         self.battery = battery
         self.wind_scale = float(wind_scale)
+        # Ceiling reference: terrain height at the pad, so the limit is an
+        # altitude above the launch point rather than above sea level.
+        self.spawn_ground = terrain.height(0.0, 0.0)
 
     def wind(self, t: float) -> np.ndarray:
         """Return the deterministic wind vector at simulation time ``t``."""
@@ -120,6 +133,9 @@ class Physics:
 
         half = self.terrain.extent_m / 2.0 - ARENA_MARGIN_M
         if abs(x) > half or abs(y) > half:
+            return CrashReason.OUT_OF_BOUNDS
+
+        if z > self.spawn_ground + CEILING_AGL_M:
             return CrashReason.OUT_OF_BOUNDS
 
         if self.terrain.water_z is not None and z < self.terrain.water_z + 0.05:
