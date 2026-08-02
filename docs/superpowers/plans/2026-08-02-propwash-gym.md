@@ -211,7 +211,7 @@ def test_euler_quat_roundtrip():
         assert pytest.approx(yaw, abs=1e-9) == y2
 
 
-def test_pitching_forward_tilts_body_up_toward_minus_x():
+def test_pitching_forward_tilts_body_up_toward_plus_x():
     # 30 deg nose-down pitch: body-up leans toward +x in this convention.
     q = euler_to_quat(0.0, np.deg2rad(30.0), 0.0)
     up = body_up_axis(q)
@@ -269,9 +269,11 @@ Create `python/propwash_gym/core/rotations.py`:
 ```python
 """The single frame convention for this package.
 
-World frame is **Z-up** (x forward, y left, z up), matching robotics practice
-and the sibling ``rotorenv`` project. Quaternions are **scalar-first**
-``[w, x, y, z]`` and are always unit length.
+World frame is **Z-up**: ``x`` east, ``y`` north, ``z`` altitude. This matches
+robotics practice and the sibling ``rotorenv`` project. Yaw 0 points along
+``+x``, so heading maths and terrain sampling agree that east is the zero
+bearing. Quaternions are **scalar-first** ``[w, x, y, z]`` and always unit
+length.
 
 The browser simulator is Y-up (Three.js). Conversion happens only where
 trajectories are exported for browser replay — never inside the sim loop. Do
