@@ -218,7 +218,7 @@ absolute distance penalties are too sparse and stall at 0% success.
 
 | Term | Value |
 |---|---|
-| `ProgressReward` | `+1.0 ×` distance closed toward the current target |
+| `ProgressReward` | `+1.0 ×` fraction of the target's initial distance closed (normalized: a full traverse pays 1.0 at any range) |
 | `TargetReached` | `+10` per target |
 | `AllTargetsBonus` | `+25` on clearing the layout |
 | `CrashPenalty` | `−10`, terminates |
@@ -227,6 +227,14 @@ absolute distance penalties are too sparse and stall at 0% success.
 
 `ProgressReward` is stateful and must be reset with the spawn and first target on
 every `reset()`.
+
+Progress is **normalized by the target's initial distance**. Without it, a
+12-target hunt at ~100 m spacing pays about +1200 in progress against a −10
+crash penalty, so crashing costs 0.74% of episode return — and because a crash
+ends the episode early it also stops the energy penalty accruing, leaving almost
+no gradient against flying into terrain. Normalized, the run pays about +12 and
+a crash costs 6.4%. Reward is then invariant to target spacing, so changing the
+map no longer silently reweights every other term.
 
 **Terminate** on: all targets collected, crash, or battery empty.
 **Truncate** at the mission time limit (`max_episode_steps`).
