@@ -2156,6 +2156,8 @@ git commit -m "feat(gym): rigid-body physics with substeps, wind, and crash dete
 
 Mirrors `rotorenv/core/reward.py`. `ProgressReward` is stateful and **must** be reset each episode — this is the single most important detail for learnability.
 
+Progress is also **normalized by the target's initial distance** (`normalize=True`), so a full traverse pays `scale` at any range. Raw metres-closed shaping made a −10 crash penalty worth 0.74% of a 12-target episode's return.
+
 **Files:**
 - Create: `python/propwash_gym/core/reward.py`
 - Test: `python/tests/test_reward.py`
