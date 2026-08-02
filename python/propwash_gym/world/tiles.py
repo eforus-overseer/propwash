@@ -6,7 +6,15 @@ Two providers, with **opposite coordinate order** in their URLs:
 * AWS terrarium DEM  — ``/terrarium/{z}/{x}/{y}.png`` (column before row)
 
 Swapping them yields valid-looking imagery of the wrong place, so the order is
-pinned by tests. Elevation is decoded with the documented terrarium formula::
+pinned by tests.
+
+**The cache directory layout deliberately mirrors each provider's URL order**,
+so the same tile is stored at ``terrarium/15/19551/13454.png`` but
+``imagery/15/13454/19551.jpg``. Seeing the two indices transposed between
+providers on disk looks like a bug and is not — it keeps each path a direct
+echo of the URL it came from.
+
+Elevation is decoded with the documented terrarium formula::
 
     h = R * 256 + G + B / 256 - 32768
 
@@ -17,12 +25,15 @@ return large negative values. Callers must not clamp them to zero.
 from __future__ import annotations
 
 import io
+import logging
 import math
 import pathlib
 from typing import Callable
 
 import numpy as np
 from PIL import Image
+
+_log = logging.getLogger(__name__)
 
 IMAGERY_BASE = (
     "https://server.arcgisonline.com/ArcGIS/rest/services/"
@@ -31,6 +42,9 @@ IMAGERY_BASE = (
 TERRARIUM_BASE = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium"
 USER_AGENT = "propwash-gym/0.1 (+https://github.com/eforus-overseer)"
 DEFAULT_CACHE_ROOT = pathlib.Path.home() / ".cache" / "propwash-gym" / "tiles"
+
+#: Web Mercator is undefined beyond this latitude; inputs are clamped to it.
+MAX_MERCATOR_LAT = 85.0511287798066
 
 Fetcher = Callable[[str], bytes]
 
@@ -41,8 +55,13 @@ def lon_to_tile(lon: float, z: int) -> float:
 
 
 def lat_to_tile(lat: float, z: int) -> float:
-    """Fractional tile row for a latitude at zoom ``z`` (Web Mercator)."""
-    r = math.radians(lat)
+    """Fractional tile row for a latitude at zoom ``z`` (Web Mercator).
+
+    Latitude is clamped to Web Mercator's valid range (±85.0511°). Without the
+    clamp the projection fails asymmetrically: ``-90`` raises from ``math.log``
+    while ``+90`` silently returns a nonsense index that would reach a URL.
+    """
+    r = math.radians(max(-MAX_MERCATOR_LAT, min(MAX_MERCATOR_LAT, float(lat))))
     return (1.0 - math.log(math.tan(r) + 1.0 / math.cos(r)) / math.pi) / 2.0 * (2**z)
 
 
@@ -100,16 +119,22 @@ class TileCache:
         if path.exists():
             try:
                 return np.asarray(Image.open(path).convert("RGB"))
-            except OSError:
-                path.unlink(missing_ok=True)   # corrupt file: refetch below
+            except Exception as exc:   # truncated or malformed cache entry
+                _log.debug("discarding unreadable cache entry %s: %r", path, exc)
+                path.unlink(missing_ok=True)   # refetch below
         if self.offline:
             return None
         try:
             raw = self._fetch(url)
             if not raw:
+                _log.debug("empty response for %s", url)
                 return None
             img = Image.open(io.BytesIO(raw)).convert("RGB")
-        except Exception:
+        except Exception as exc:
+            # Degrade to procedural terrain rather than raising, but leave a
+            # trace: a swallowed URL-builder or decode bug is otherwise
+            # indistinguishable from "provider unreachable".
+            _log.debug("tile fetch failed for %s: %r", url, exc)
             return None
         path.parent.mkdir(parents=True, exist_ok=True)
         img.save(path, fmt)
