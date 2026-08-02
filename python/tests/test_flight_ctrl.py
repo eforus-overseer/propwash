@@ -75,3 +75,45 @@ def test_acro_expo_softens_small_stick_inputs():
 def test_unknown_mode_is_rejected():
     with pytest.raises(ValueError, match="mode"):
         FlightController(mode="sport")
+
+
+def test_angle_mode_reports_stick_derived_rates_matching_the_browser():
+    """ANGLE rates come from stick deflection, not from differencing Euler angles.
+
+    index.html:503 sets `Drone.omega.set(-inp.p*2, -inp.y*2.6, -inp.r*2)`. A
+    finite-difference alternative reports 4.62 rad/s where the browser reports
+    2.0, and varies with dt — defeating the timestep independence the
+    exponential smoothing exists to provide.
+    """
+    for dt in (0.005, 0.02, 0.1):
+        fc = FlightController(mode="angle")
+        s = _level_state()
+        fc.apply(s, roll=0.0, pitch=1.0, yaw=0.0, dt=dt)
+        assert pytest.approx(2.0, abs=1e-9) == float(s.angular_velocity[1])
+        assert pytest.approx(0.0, abs=1e-9) == float(s.angular_velocity[0])
+
+
+def test_angle_rates_scale_linearly_with_stick_and_are_signed():
+    fc = FlightController(mode="angle")
+    s = _level_state()
+    fc.apply(s, roll=-0.5, pitch=0.25, yaw=1.0, dt=0.02)
+    assert pytest.approx(-1.0, abs=1e-9) == float(s.angular_velocity[0])
+    assert pytest.approx(0.5, abs=1e-9) == float(s.angular_velocity[1])
+    assert pytest.approx(2.6, abs=1e-9) == float(s.angular_velocity[2])
+
+
+@pytest.mark.parametrize("bad_dt", [0.0, -0.02, -1.0])
+@pytest.mark.parametrize("mode", ["angle", "acro"])
+def test_non_positive_dt_is_rejected_in_both_modes(mode, bad_dt):
+    """A negative dt would rotate the attitude backwards, silently.
+
+    Guarding only the rate calculation left the quaternion still updating, so
+    dt=-0.02 tilted the drone the wrong way while reporting zero angular
+    velocity — motion with no diagnostic.
+    """
+    fc = FlightController(mode=mode)
+    s = _level_state()
+    with pytest.raises(ValueError, match="dt must be positive"):
+        fc.apply(s, roll=0.0, pitch=1.0, yaw=0.0, dt=bad_dt)
+    # Attitude must be untouched by the rejected call.
+    assert pytest.approx(0.0, abs=1e-12) == float(quat_to_euler(s.quaternion)[1])

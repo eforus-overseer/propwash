@@ -1740,6 +1740,8 @@ RATE_RP = math.radians(480.0)
 RATE_Y = math.radians(300.0)
 ANGLE_SMOOTH_K = 7.5
 ANGLE_YAW_RATE = 2.6
+#: Reported roll/pitch rate per unit of stick in ANGLE mode (index.html:503).
+ANGLE_STICK_RATE = 2.0
 ACRO_SMOOTH_K = 18.0
 MODES = ("angle", "acro")
 
@@ -1786,10 +1788,13 @@ class FlightController:
         new_roll = cur_roll + (target_roll - cur_roll) * smooth
         self._yaw += float(yaw) * ANGLE_YAW_RATE * dt
         state.quaternion = euler_to_quat(new_roll, new_pitch, self._yaw)
+        # Rates come from stick deflection, as in index.html:503. Finite-
+        # differencing the Euler angles instead reports 4.62 rad/s where the
+        # browser reports 2.0, and varies with dt.
         state.angular_velocity = np.array(
             [
-                (new_roll - cur_roll) / dt if dt > 0 else 0.0,
-                (new_pitch - cur_pitch) / dt if dt > 0 else 0.0,
+                float(roll) * ANGLE_STICK_RATE,
+                float(pitch) * ANGLE_STICK_RATE,
                 float(yaw) * ANGLE_YAW_RATE,
             ]
         )
@@ -2875,6 +2880,9 @@ class PropwashEnv(Env):
 
         self._crashed = False
         self.battery.reset(self.battery_mah)
+        # Required, not optional: ANGLE mode rebuilds attitude from the
+        # controller's own integrated yaw, so a stale value snaps the heading on
+        # the first step (verified: a drone spawned at 1.0 rad jumps to 0.0).
         self.controller.reset(yaw=0.0)
         self._task_reset()
         self.state = self._initial_state()
