@@ -8,10 +8,38 @@ A single-file FPV drone simulator: real satellite imagery, real elevation data, 
 git clone https://github.com/eforus-overseer/propwash-fpv-sim.git && open propwash-fpv-sim/index.html
 ```
 
-```
-P R O P / / W A S H
-FPV UAV FLIGHT SIMULATOR · 5" QUAD · GPS + OSD
-```
+![FPV flight through the Grand Canyon](docs/media/fpv-canyon-flight.gif)
+
+*FPV goggle view over real Grand Canyon elevation data — rotor tips in the frame corners, live OSD, satellite imagery on real DEM relief.*
+
+## Gallery
+
+| | |
+|---|---|
+| ![Chase camera over the Grand Canyon](docs/media/grand-canyon-chase.jpg) **3rd-person chase** — the modeled 5" quad over Bright Angel | ![FPV view with OSD](docs/media/fpv-view-osd.jpg) **FPV view** — corner rotor tips, crosshair, full OSD |
+| ![Target hunt with beacon](docs/media/target-hunt-beacon.jpg) **TARGET HUNT** — beacon beam and distance to the active target | ![Race gate at Bora Bora](docs/media/bora-bora-gate.jpg) **Race gate** — Bora Bora, gate marker and lagoon |
+| ![Crash explosion](docs/media/crash-explosion.jpg) **Crash** — fireball, debris, impact readout | ![Main menu](docs/media/menu.jpg) **Menu** — over a live cinematic orbit of the pad |
+
+### Flying the gate course
+
+![Chase camera through gates at Bora Bora](docs/media/chase-borabora-gates.gif)
+
+*Bora Bora — chase cam through the gate course, palms and Mt Otemanu behind.*
+
+### Target hunt
+
+![Target hunt run](docs/media/target-hunt.gif)
+
+*Negev Desert — hunting randomized targets across real crater-rim terrain.*
+
+### The seven locations
+
+| | | |
+|---|---|---|
+| ![Negev Desert](docs/media/negev-desert.jpg) NEGEV DESERT | ![High Alps](docs/media/high-alps.jpg) HIGH ALPS | ![Cascade Forest](docs/media/cascade-forest.jpg) CASCADE FOREST |
+| ![Grand Canyon](docs/media/grand-canyon-chase.jpg) GRAND CANYON | ![Iceland Volcanic](docs/media/iceland-volcanic.jpg) ICELAND VOLCANIC | ![Sahara Erg](docs/media/sahara-erg.jpg) SAHARA ERG |
+
+*All captured in-engine with live Esri satellite imagery and AWS terrarium elevation.*
 
 ## Controls
 
