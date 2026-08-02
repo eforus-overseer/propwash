@@ -76,3 +76,79 @@ def test_build_heightfield_is_deterministic_in_fallback_mode():
     a = build_heightfield("negev", cache=cache, seed=11)
     b = build_heightfield("negev", cache=cache, seed=11)
     np.testing.assert_array_equal(a.heights, b.heights)
+
+
+def _tile_encoding_cache(value_fn):
+    """A TileCache whose tiles encode an arbitrary function of (z, x, y)."""
+
+    class _Fake(TileCache):
+        def __init__(self):
+            super().__init__(root="/nonexistent-propwash-crop", fetcher=lambda u: b"")
+
+        def get_terrarium(self, z, x, y):
+            return value_fn(z, x, y)
+
+    return _Fake()
+
+
+def test_dem_patch_is_centred_on_the_location_not_a_tile_corner():
+    """World (0, 0) must be the place named in LOCATIONS.
+
+    Truncating fractional tile coordinates puts the origin on a tile boundary
+    instead — up to 1043 m away at Erg Chebbi, which would spawn the drone a
+    kilometre from the dunes that define the location.
+
+    Every tile here is uniformly 0 m except a single spike planted at the exact
+    pixel the location falls on. A correctly centred crop samples that spike at
+    world (0, 0); a corner-aligned one misses it entirely.
+    """
+    from propwash_gym.world.locations import get_location
+    from propwash_gym.world.terrain import DEM_ZOOM, TILE_PX, build_heightfield
+    from propwash_gym.world.tiles import lat_to_tile, lon_to_tile
+
+    loc = get_location("sahara")
+    fx = lon_to_tile(loc.lon, DEM_ZOOM)
+    fy = lat_to_tile(loc.lat, DEM_ZOOM)
+    home_tile = (int(fx), int(fy))
+    spike_col = int((fx - int(fx)) * TILE_PX)
+    spike_row = int((fy - int(fy)) * TILE_PX)
+
+    def value_fn(z, x, y):
+        # Flat 0 m everywhere: R=128, G=0, B=0 decodes to exactly 0.
+        tile = np.zeros((TILE_PX, TILE_PX, 3), dtype=np.uint8)
+        tile[..., 0] = 128
+        if (x, y) == home_tile:
+            tile[spike_row, spike_col, 1] = 200      # a 200 m spike
+        return tile
+
+    hf = build_heightfield("sahara", cache=_tile_encoding_cache(value_fn))
+    assert hf.source == "dem"
+
+    # The spike must land at the middle of the cropped grid. Assert on grid
+    # position rather than on height(0, 0): bilinear interpolation averages a
+    # one-pixel spike across four neighbours, so the sampled value is a quarter
+    # of the peak even when the crop is exactly right.
+    row, col = np.unravel_index(int(np.argmax(hf.heights)), hf.heights.shape)
+    centre = hf.heights.shape[0] // 2
+    assert abs(int(row) - centre) <= 1 and abs(int(col) - centre) <= 1, (
+        f"spike landed at ({row}, {col}), expected ~({centre}, {centre}); "
+        "the patch is not centred on the location"
+    )
+    # And it must be reachable from world origin at all.
+    assert hf.height(0.0, 0.0) > 0.0
+
+
+def test_partial_tile_loss_warns_instead_of_passing_off_holes_as_terrain():
+    from propwash_gym.world.terrain import DEM_ZOOM, TILE_PX, build_heightfield
+
+    calls = {"n": 0}
+
+    def value_fn(z, x, y):
+        calls["n"] += 1
+        if calls["n"] == 3:          # drop exactly one tile
+            return None
+        return np.full((TILE_PX, TILE_PX, 3), 128, dtype=np.uint8)
+
+    with pytest.warns(RuntimeWarning, match="elevation tiles missing"):
+        hf = build_heightfield("negev", cache=_tile_encoding_cache(value_fn))
+    assert hf.source == "dem", "one missing tile must not trigger the full fallback"
