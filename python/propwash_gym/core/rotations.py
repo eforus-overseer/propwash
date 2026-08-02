@@ -1,8 +1,10 @@
 """The single frame convention for this package.
 
-World frame is **Z-up** (x forward, y left, z up), matching robotics practice
-and the sibling ``rotorenv`` project. Quaternions are **scalar-first**
-``[w, x, y, z]`` and are always unit length.
+World frame is **Z-up**: ``x`` east, ``y`` north, ``z`` altitude. This matches
+robotics practice and the sibling ``rotorenv`` project. Yaw 0 points along
+``+x``, so heading maths and terrain sampling agree that east is the zero
+bearing. Quaternions are **scalar-first** ``[w, x, y, z]`` and always unit
+length.
 
 The browser simulator is Y-up (Three.js). Conversion happens only where
 trajectories are exported for browser replay — never inside the sim loop. Do

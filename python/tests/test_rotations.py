@@ -27,7 +27,7 @@ def test_euler_quat_roundtrip():
         assert pytest.approx(yaw, abs=1e-9) == y2
 
 
-def test_pitching_forward_tilts_body_up_toward_minus_x():
+def test_pitching_forward_tilts_body_up_toward_plus_x():
     # 30 deg nose-down pitch: body-up leans toward +x in this convention.
     q = euler_to_quat(0.0, np.deg2rad(30.0), 0.0)
     up = body_up_axis(q)
