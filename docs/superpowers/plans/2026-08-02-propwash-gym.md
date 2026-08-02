@@ -1947,7 +1947,9 @@ def test_gentle_ground_contact_does_not_crash():
 
 def test_fast_descent_into_ground_crashes():
     p = _phys(_flat(0.0))
-    s = DroneState([0, 0, 0.5], [0, 0, -8.0], [1, 0, 0, 0], [0, 0, 0], 0.0)
+    # Start low enough that one 0.02 s step actually reaches contact: at 8 m/s
+    # the drone falls ~0.16 m, and contact needs z < ground + GROUND_OFFSET.
+    s = DroneState([0, 0, 0.2], [0, 0, -8.0], [1, 0, 0, 0], [0, 0, 0], 0.0)
     reason = p.step(s, throttle=0.0, roll=0.0, pitch=0.0, yaw=0.0, dt=0.02)
     assert reason is CrashReason.GROUND
 

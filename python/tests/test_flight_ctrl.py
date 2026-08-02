@@ -117,3 +117,33 @@ def test_non_positive_dt_is_rejected_in_both_modes(mode, bad_dt):
         fc.apply(s, roll=0.0, pitch=1.0, yaw=0.0, dt=bad_dt)
     # Attitude must be untouched by the rejected call.
     assert pytest.approx(0.0, abs=1e-12) == float(quat_to_euler(s.quaternion)[1])
+
+
+def test_controller_yaw_leaks_across_episodes_unless_reset():
+    """ANGLE rebuilds attitude from the controller's own integrated yaw.
+
+    A controller reused without `reset()` therefore imposes its stale heading on
+    a freshly spawned drone, snapping it on the first step. This is a tripwire
+    for the env: `reset()` must call `controller.reset(yaw=...)`, and nothing
+    else in the codebase would catch it being missed.
+    """
+    fc = FlightController(mode="angle")
+    flown = _level_state()
+    for _ in range(50):                       # yaw away from zero
+        fc.apply(flown, roll=0.0, pitch=0.0, yaw=1.0, dt=0.02)
+    stale = quat_to_euler(flown.quaternion)[2]
+    assert abs(stale) > 1.0, "precondition: controller should hold a nonzero yaw"
+
+    # A new episode's drone, spawned level, reusing the same controller.
+    fresh = _level_state()
+    fc.apply(fresh, roll=0.0, pitch=0.0, yaw=0.0, dt=0.02)
+    assert quat_to_euler(fresh.quaternion)[2] == pytest.approx(stale, abs=1e-9), (
+        "stale controller yaw should leak into the new episode — if this now "
+        "fails, the leak was fixed and the env's reset contract can relax"
+    )
+
+    # ...and reset() is what prevents it.
+    fc.reset(yaw=0.0)
+    fixed = _level_state()
+    fc.apply(fixed, roll=0.0, pitch=0.0, yaw=0.0, dt=0.02)
+    assert quat_to_euler(fixed.quaternion)[2] == pytest.approx(0.0, abs=1e-9)
