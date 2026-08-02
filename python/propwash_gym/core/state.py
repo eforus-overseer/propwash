@@ -22,7 +22,13 @@ class DroneState:
         position: World-frame ``(x, y, z)`` in metres, Z-up.
         velocity: World-frame linear velocity in m/s.
         quaternion: Attitude, scalar-first ``[w, x, y, z]``, unit length.
-        angular_velocity: Body angular rates in rad/s.
+        angular_velocity: Angular rates in rad/s, ``(roll, pitch, yaw)``. Note
+            that the two flight modes populate this differently, mirroring the
+            browser simulator: **ACRO** writes true integrated body rates, while
+            **ANGLE** reports rates derived from stick deflection (2.0 rad/s per
+            unit of roll/pitch, 2.6 for yaw) rather than measuring the attitude
+            change. Consumers that normalise this field should not assume the
+            ACRO scale (``RATE_RP``) applies in ANGLE.
         time: Elapsed simulation time in seconds.
     """
 

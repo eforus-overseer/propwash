@@ -30,6 +30,8 @@ RATE_RP = math.radians(480.0)
 RATE_Y = math.radians(300.0)
 ANGLE_SMOOTH_K = 7.5
 ANGLE_YAW_RATE = 2.6
+#: Reported roll/pitch rate per unit of stick in ANGLE mode (index.html:503).
+ANGLE_STICK_RATE = 2.0
 ACRO_SMOOTH_K = 18.0
 MODES = ("angle", "acro")
 
@@ -59,7 +61,15 @@ class FlightController:
     def apply(
         self, state: DroneState, roll: float, pitch: float, yaw: float, dt: float
     ) -> None:
-        """Advance ``state``'s attitude by one control step, in place."""
+        """Advance ``state``'s attitude by one control step, in place.
+
+        Raises:
+            ValueError: If ``dt`` is not positive. A negative step would still
+                rotate the attitude — backwards — so rejecting it outright is
+                safer than guarding the rate calculation alone.
+        """
+        if dt <= 0.0:
+            raise ValueError(f"dt must be positive, got {dt!r}")
         if self.mode == "angle":
             self._apply_angle(state, roll, pitch, yaw, dt)
         else:
@@ -76,10 +86,15 @@ class FlightController:
         new_roll = cur_roll + (target_roll - cur_roll) * smooth
         self._yaw += float(yaw) * ANGLE_YAW_RATE * dt
         state.quaternion = euler_to_quat(new_roll, new_pitch, self._yaw)
+        # Rates come straight from stick deflection, as in index.html:503
+        # (`Drone.omega.set(-inp.p*2, -inp.y*2.6, -inp.r*2)`). Deriving them by
+        # finite-differencing the Euler angles instead would report 4.62 rad/s
+        # where the browser reports 2.0, and would vary with dt — defeating the
+        # timestep independence the exponential smoothing exists to provide.
         state.angular_velocity = np.array(
             [
-                (new_roll - cur_roll) / dt if dt > 0 else 0.0,
-                (new_pitch - cur_pitch) / dt if dt > 0 else 0.0,
+                float(roll) * ANGLE_STICK_RATE,
+                float(pitch) * ANGLE_STICK_RATE,
                 float(yaw) * ANGLE_YAW_RATE,
             ]
         )
