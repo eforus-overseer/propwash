@@ -118,3 +118,22 @@ def test_wraps_a_real_hunt_env_end_to_end():
         if term or trunc:
             break
     env.close()
+
+
+@pytest.mark.parametrize("bad_window", [0, -1])
+def test_window_below_one_is_rejected(bad_window):
+    """A zero-length deque never fills, so staging divides by zero on reset."""
+    with pytest.raises(ValueError, match="window must be at least 1"):
+        CurriculumWrapper(_Stub(), mode="success", window=bad_window)
+
+
+def test_wrapper_overrides_a_caller_supplied_difficulty():
+    """The schedule wins over reset(options=...).
+
+    Correct priority for training — the curriculum owns difficulty — but worth
+    pinning so it is a decision rather than an accident.
+    """
+    env = _Stub()
+    w = CurriculumWrapper(env, mode="success", start_difficulty=0.25)
+    w.reset(options={"difficulty": 0.9})
+    assert env.seen[0] == 0.25

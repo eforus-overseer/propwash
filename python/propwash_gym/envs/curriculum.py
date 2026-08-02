@@ -52,6 +52,10 @@ class CurriculumWrapper(gym.Wrapper):
     ) -> None:
         if mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
+        if int(window) < 1:
+            # A zero-length deque never fills, so the staging check divides by
+            # len(self._results) == 0 on the first reset.
+            raise ValueError(f"window must be at least 1, got {window!r}")
         super().__init__(env)
         self.mode = mode
         self.difficulty = float(np.clip(start_difficulty, 0.0, 1.0))
