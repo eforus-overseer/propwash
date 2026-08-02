@@ -1193,13 +1193,14 @@ def test_probe_ahead_returns_one_height_per_distance():
     assert np.all(np.isfinite(probes))
 
 
-def test_water_level_is_derived_from_the_dem_for_oceanic_terrain():
-    # Bathymetry present: large negative values mean sea level is above the floor.
+def test_water_level_is_sea_level_for_oceanic_terrain():
+    # Terrarium is referenced to sea level, so water sits at z = 0 exactly.
     heights = np.where(np.arange(256).reshape(16, 16) < 128, -1200.0, 300.0)
     hf = Heightfield(heights=heights, extent_m=100.0, has_water=True)
-    assert hf.water_z is not None
-    assert hf.water_z > heights.min()
-    assert hf.water_z < heights.max()
+    assert hf.water_z == 0.0
+    # Sanity: that level actually splits this field into wet and dry.
+    assert (heights < hf.water_z).any()
+    assert (heights > hf.water_z).any()
 
 
 def test_no_water_level_when_location_has_none():
@@ -1287,10 +1288,12 @@ class Heightfield:
             raise ValueError(f"heights must be square 2-D, got {self.heights.shape}")
         self.extent_m = float(self.extent_m)
         if self.has_water:
-            # Terrarium encodes bathymetry, so the sea floor is far below the
-            # shoreline. Sea level sits just above the deepest water, not at 0.
-            floor = float(self.heights.min())
-            self.water_z = floor + 0.02 * (float(self.heights.max()) - floor)
+            # Terrarium elevations are referenced to sea level, so sea level IS
+            # zero -- both for real tiles and for the procedural fallback, which
+            # shifts water locations below zero to match. Deriving it from
+            # min/max instead lands in the ocean trench (Bora Bora's DEM bottoms
+            # out near -6100 m), leaving 0% of the map wet.
+            self.water_z = 0.0
 
     def _to_grid(self, x: float, y: float) -> tuple[float, float]:
         """Map world metres to fractional grid indices, clamped to the patch."""

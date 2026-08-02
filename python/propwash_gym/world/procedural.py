@@ -3,6 +3,11 @@
 Value-noise octaves scaled by each location's ``relief``. This is a fallback so
 that tests and CI never require network access — it is not trying to imitate the
 real DEM.
+
+Water locations are shifted so part of the field sits below zero, mirroring the
+bathymetry real terrarium tiles carry. Without that shift an offline Bora Bora
+would be dry land, and the splash-crash mechanic would vanish on exactly the
+code path CI exercises — a difference no test would report as a failure.
 """
 
 from __future__ import annotations
@@ -10,6 +15,9 @@ from __future__ import annotations
 import numpy as np
 
 from propwash_gym.world.locations import get_location
+
+#: Share of a water location's procedural field placed below sea level.
+WATER_FRACTION = 0.45
 
 
 def _value_noise(rng: np.random.Generator, size: int, cells: int) -> np.ndarray:
@@ -49,4 +57,14 @@ def procedural_heights(location_key: str, size: int = 256, seed: int = 0) -> np.
         total += amplitude
         amplitude *= 0.5
     h /= total
-    return h * loc.relief
+    h = h * loc.relief
+
+    if loc.has_water:
+        # Real terrarium tiles encode bathymetry, so a coastal location's DEM
+        # spans deep negatives up to dry peaks, and sea level falls naturally in
+        # between. Plain noise is non-negative, so an island built from it would
+        # have no lagoon at all — the offline path would silently lose the one
+        # mechanic that makes this location distinct. Shifting the field down by
+        # WATER_FRACTION of its range puts that share of the map under z=0.
+        h = h - np.quantile(h, WATER_FRACTION)
+    return h
