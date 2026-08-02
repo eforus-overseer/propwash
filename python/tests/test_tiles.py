@@ -10,6 +10,7 @@ import pytest
 from PIL import Image
 
 from propwash_gym.world.tiles import (
+    MAX_MERCATOR_LAT,
     TileCache,
     decode_terrarium,
     imagery_url,
@@ -103,3 +104,49 @@ def test_offline_cache_only_mode_never_calls_the_fetcher(tmp_path):
     cache = TileCache(root=tmp_path, fetcher=lambda u: called.append(u), offline=True)
     assert cache.get_terrarium(z=15, x=9, y=9) is None
     assert called == []
+
+
+def test_lat_to_tile_clamps_at_both_poles_instead_of_failing():
+    """Web Mercator is undefined past ±85.05°.
+
+    Unclamped, ``-90`` raises from ``math.log`` and ``+90`` silently returns a
+    nonsense index that would reach a URL — the same silent-wrong-place failure
+    class as swapping the providers' axis order.
+    """
+    north = lat_to_tile(90.0, 15)
+    south = lat_to_tile(-90.0, 15)
+    assert north == pytest.approx(lat_to_tile(MAX_MERCATOR_LAT, 15))
+    assert south == pytest.approx(lat_to_tile(-MAX_MERCATOR_LAT, 15))
+    # Both must land inside the tile grid for this zoom. The north edge lands on
+    # floating-point negative zero, so compare with a tolerance rather than >= 0.
+    for row in (north, south):
+        assert row == pytest.approx(float(np.clip(row, 0.0, 2**15)), abs=1e-9)
+
+
+def test_corrupt_cache_entry_is_discarded_and_refetched(tmp_path):
+    good = _png_bytes(np.full((4, 4, 3), 200, dtype=np.uint8))
+    calls = []
+
+    def fake_fetch(url):
+        calls.append(url)
+        return good
+
+    cache = TileCache(root=tmp_path, fetcher=fake_fetch)
+    path = tmp_path / "terrarium" / "15" / "1" / "2.png"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"not a png at all")
+
+    tile = cache.get_terrarium(z=15, x=1, y=2)
+    assert tile is not None, "a corrupt entry must be replaced, not returned"
+    assert len(calls) == 1
+    np.testing.assert_array_equal(tile, np.full((4, 4, 3), 200, dtype=np.uint8))
+
+
+def test_failures_are_logged_at_debug_rather_than_silently_swallowed(caplog):
+    def boom(url):
+        raise OSError("network down")
+
+    cache = TileCache(root="/nonexistent-propwash-log-test", fetcher=boom)
+    with caplog.at_level("DEBUG", logger="propwash_gym.world.tiles"):
+        assert cache.get_terrarium(z=15, x=1, y=2) is None
+    assert any("tile fetch failed" in r.message for r in caplog.records)
