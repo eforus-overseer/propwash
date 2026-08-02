@@ -54,31 +54,52 @@ class RewardTerm(Protocol):
 class ProgressReward:
     """Dense reward for closing distance to the active target.
 
-    ``r = scale * (d_prev - d_curr)``: moving 1 m closer pays ``scale``,
+    ``r = scale * (d_prev - d_curr) / span``: moving toward the target pays,
     stalling pays 0, retreating pays negative. The previous distance is instance
     state and must be cleared via :meth:`reset` each episode.
+
+    ``normalize`` divides progress by the distance the target started at, so
+    fully traversing to a target pays ``scale`` regardless of whether it was
+    30 m or 300 m away. This matters more than it looks:
+
+    * **Unnormalized**, a 12-target hunt with targets ~100 m apart pays about
+      +1200 in progress, against a −10 crash penalty — so crashing costs under
+      1% of episode return and the policy is barely discouraged from flying into
+      terrain. Worse, crashing ends the episode early, which also stops the
+      energy penalty accruing.
+    * **Normalized**, the same run pays about +12, putting every term on the
+      same order of magnitude and making the reward invariant to how far apart
+      the targets are scattered. Changing the map no longer silently reweights
+      every other term.
+
+    Set ``normalize=False`` for the raw metres-closed signal.
     """
 
     scale: float = 1.0
+    normalize: bool = True
     _prev_distance: float | None = field(default=None, repr=False)
+    _span: float = field(default=1.0, repr=False)
 
     def reset(self, initial_position: np.ndarray, target: np.ndarray) -> None:
         """Seed the previous distance with the spawn distance (zero progress)."""
         self._prev_distance = float(np.linalg.norm(target - initial_position))
+        self._span = max(self._prev_distance, 1.0) if self.normalize else 1.0
 
     def retarget(self, position: np.ndarray, target: np.ndarray) -> None:
         """Reseed after the active target changes, so the switch pays nothing."""
         self._prev_distance = float(np.linalg.norm(target - position))
+        self._span = max(self._prev_distance, 1.0) if self.normalize else 1.0
 
     def __call__(self, ctx: RewardContext) -> float:
-        """Return ``scale * (prev_distance - current_distance)``."""
+        """Return ``scale * (prev_distance - current_distance) / span``."""
         distance = float(np.linalg.norm(ctx.target - ctx.state.position))
         if self._prev_distance is None:
             self._prev_distance = distance
+            self._span = max(distance, 1.0) if self.normalize else 1.0
             return 0.0
         progress = self._prev_distance - distance
         self._prev_distance = distance
-        return float(self.scale) * progress
+        return float(self.scale) * progress / self._span
 
 
 @dataclass
