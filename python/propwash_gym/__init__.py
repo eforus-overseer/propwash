@@ -24,7 +24,8 @@ _EPISODE_STEPS = 3000
 
 _VARIANTS: dict[str, tuple[str, int, dict[str, Any]]] = {
     "PropwashHunt-v0": (_HUNT, _EPISODE_STEPS, {}),
-    # Flat, windless, single-target arena — the curriculum's starting point.
+    # Windless, single-target, tightly-scattered arena — the curriculum's
+    # starting point. Terrain stays real DEM at every difficulty.
     "PropwashHuntEasy-v0": (_HUNT, _EPISODE_STEPS, {"start_difficulty": 0.0}),
     "PropwashHuntRGB-v0": (_HUNT, _EPISODE_STEPS, {"perception": "rgb"}),
     "PropwashHuntDepth-v0": (_HUNT, _EPISODE_STEPS, {"perception": "depth"}),
