@@ -3334,6 +3334,7 @@ Create `python/tests/test_curriculum.py`:
 ```python
 """CurriculumWrapper: success-staged and step-annealed difficulty schedules."""
 
+import gymnasium as gym
 import numpy as np
 import pytest
 
@@ -3341,8 +3342,12 @@ from propwash_gym.envs.curriculum import CurriculumWrapper
 from propwash_gym.envs.hunt_env import HuntEnv
 
 
-class _Stub:
-    """Minimal env that records the difficulty it was reset with."""
+class _Stub(gym.Env):
+    """Minimal env that records the difficulty it was reset with.
+
+    Must subclass gym.Env: Wrapper.__init__ asserts isinstance(env, Env) before
+    running any wrapper logic, so a plain class fails at construction.
+    """
 
     def __init__(self):
         self.seen: list[float] = []
