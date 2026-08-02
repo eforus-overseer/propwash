@@ -1366,8 +1366,15 @@ def build_heightfield(
     loc = get_location(location_key)
     cache = cache if cache is not None else TileCache()
 
-    x0 = int(lon_to_tile(loc.lon, DEM_ZOOM)) - DEM_TILES // 2 + 1
-    y0 = int(lat_to_tile(loc.lat, DEM_ZOOM)) - DEM_TILES // 2 + 1
+    # Keep the FRACTIONAL tile coordinates. Truncating them puts world (0, 0)
+    # on a tile boundary instead of on the place we mean to fly -- measured at
+    # 1043 m off for Erg Chebbi. Fetch one spare tile per axis and crop around
+    # the location's own pixel after assembly.
+    fx = lon_to_tile(loc.lon, DEM_ZOOM)
+    fy = lat_to_tile(loc.lat, DEM_ZOOM)
+    x0 = int(fx) - DEM_TILES // 2
+    y0 = int(fy) - DEM_TILES // 2
+    span = DEM_TILES + 1
 
     grid = np.zeros((TILE_PX * DEM_TILES, TILE_PX * DEM_TILES), dtype=np.float64)
     missing = 0

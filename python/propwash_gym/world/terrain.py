@@ -132,13 +132,21 @@ def build_heightfield(
     loc = get_location(location_key)
     cache = cache if cache is not None else TileCache()
 
-    x0 = int(lon_to_tile(loc.lon, DEM_ZOOM)) - DEM_TILES // 2 + 1
-    y0 = int(lat_to_tile(loc.lat, DEM_ZOOM)) - DEM_TILES // 2 + 1
+    # Fractional tile coordinates of the location itself. Truncating these to
+    # ints would put world (0, 0) on a tile *boundary* rather than on the place
+    # we mean to fly: the offset reaches 1043 m at Erg Chebbi, so the drone
+    # would spawn a kilometre from the dunes that make the location distinct.
+    # Keep the fraction and crop around it below.
+    fx = lon_to_tile(loc.lon, DEM_ZOOM)
+    fy = lat_to_tile(loc.lat, DEM_ZOOM)
+    x0 = int(fx) - DEM_TILES // 2
+    y0 = int(fy) - DEM_TILES // 2
+    span = DEM_TILES + 1   # one spare tile per axis, so the crop never runs off
 
-    grid = np.zeros((TILE_PX * DEM_TILES, TILE_PX * DEM_TILES), dtype=np.float64)
+    grid = np.zeros((TILE_PX * span, TILE_PX * span), dtype=np.float64)
     missing = 0
-    for j in range(DEM_TILES):
-        for i in range(DEM_TILES):
+    for j in range(span):
+        for i in range(span):
             tile = cache.get_terrarium(DEM_ZOOM, x0 + i, y0 + j)
             if tile is None:
                 missing += 1
@@ -147,7 +155,7 @@ def build_heightfield(
             xs = slice(i * TILE_PX, (i + 1) * TILE_PX)
             grid[ys, xs] = decode_terrarium(tile)
 
-    if missing == DEM_TILES * DEM_TILES:
+    if missing == span * span:
         if not _WARNED_OFFLINE:
             warnings.warn(
                 "no elevation tiles available (offline or unreachable); "
@@ -163,9 +171,31 @@ def build_heightfield(
             source="procedural",
         )
 
+    if missing:
+        # Absent tiles stay as zeros, which reads as flat ground at exactly
+        # sea level — indistinguishable from water on a coastal map. Say so
+        # rather than letting a hole masquerade as terrain.
+        warnings.warn(
+            f"{missing}/{span * span} elevation tiles missing for "
+            f"{location_key!r}; those regions are flat at z=0",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
     # Terrarium rows run north-to-south; flip so +y is north.
+    grid = np.flipud(grid)
+
+    # Crop a DEM_TILES-wide window centred on the location's own pixel, so world
+    # (0, 0) is the place named in LOCATIONS rather than a tile corner.
+    px = int(round((fx - x0) * TILE_PX))
+    py = int(round((fy - y0) * TILE_PX))
+    py = TILE_PX * span - py                      # flipud moved the row origin
+    half = TILE_PX * DEM_TILES // 2
+    px = int(np.clip(px, half, TILE_PX * span - half))
+    py = int(np.clip(py, half, TILE_PX * span - half))
+
     return Heightfield(
-        heights=np.flipud(grid),
+        heights=grid[py - half : py + half, px - half : px + half],
         extent_m=_dem_extent_metres(loc.lat),
         has_water=loc.has_water,
         source="dem",
