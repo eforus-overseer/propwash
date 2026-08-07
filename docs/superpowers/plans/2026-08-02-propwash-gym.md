@@ -19,7 +19,7 @@
 Do this once before Task 1. The system Python is Homebrew's and is externally managed (PEP 668), so a bare `pip install` will be refused.
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 mkdir -p python && cd python
 python3 -m venv .venv
 .venv/bin/pip install --upgrade pip
@@ -31,7 +31,7 @@ Run everything through `.venv/bin/python` and `.venv/bin/pytest` unless the venv
 
 ## File structure
 
-All paths relative to `~/ActiveFence/propwash-fpv-sim/python/`.
+All paths relative to `<repo>/python/`.
 
 | File | Responsibility |
 |---|---|
@@ -160,7 +160,7 @@ Expected: PASS, 1 test.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/
 git commit -m "feat(gym): package scaffold for propwash-gym"
 ```
@@ -421,7 +421,7 @@ Expected: PASS, 7 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/core python/tests/test_rotations.py
 git commit -m "feat(gym): DroneState and Z-up quaternion frame convention"
 ```
@@ -630,7 +630,7 @@ Expected: PASS, 10 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/core/battery.py python/tests/test_battery.py
 git commit -m "feat(gym): 4S LiPo battery model ported from the browser sim"
 ```
@@ -915,7 +915,7 @@ Expected: PASS, 11 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/world python/tests/test_tiles.py
 git commit -m "feat(gym): tile fetching, disk cache, and terrarium DEM decode"
 ```
@@ -1122,7 +1122,7 @@ Expected: PASS, 9 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/world/locations.py python/propwash_gym/world/procedural.py python/tests/test_locations.py
 git commit -m "feat(gym): seven real locations plus procedural terrain fallback"
 ```
@@ -1421,7 +1421,7 @@ Expected: PASS, 10 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/world/terrain.py python/tests/test_terrain.py
 git commit -m "feat(gym): metre-indexed heightfield with DEM assembly and fallback"
 ```
@@ -1599,7 +1599,7 @@ Expected: `negev  ok  <min> .. <max> m` with values in the 700–1000 m range.
 - [ ] **Step 7: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/tests/test_tiles_live.py python/examples/fetch_tiles.py python/pyproject.toml
 git commit -m "test(gym): live tile checks and a cache-warming script"
 ```
@@ -1829,7 +1829,7 @@ Expected: PASS, 8 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/core/flight_ctrl.py python/tests/test_flight_ctrl.py
 git commit -m "feat(gym): ANGLE and ACRO flight controllers"
 ```
@@ -2145,7 +2145,7 @@ Expected: PASS, 12 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/core/physics.py python/tests/test_physics.py
 git commit -m "feat(gym): rigid-body physics with substeps, wind, and crash detection"
 ```
@@ -2458,7 +2458,7 @@ Expected: PASS, 11 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/core/reward.py python/tests/test_reward.py
 git commit -m "feat(gym): composable reward terms with dense progress shaping"
 ```
@@ -2954,7 +2954,7 @@ Expected: PASS, 11 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/envs python/tests/test_base_env.py
 git commit -m "feat(gym): PropwashEnv Gymnasium base with switchable perception"
 ```
@@ -3312,7 +3312,7 @@ Expected: PASS, 13 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/envs/hunt_env.py python/tests/test_hunt_env.py
 git commit -m "feat(gym): TARGET HUNT task with faithful layout generation"
 ```
@@ -3575,7 +3575,7 @@ Expected: PASS, 8 tests.
 - [ ] **Step 5: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/envs/curriculum.py python/tests/test_curriculum.py
 git commit -m "feat(gym): curriculum wrapper with success and step schedules"
 ```
@@ -3759,7 +3759,7 @@ Expected: all tests pass; network tests deselected.
 - [ ] **Step 6: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/propwash_gym/__init__.py python/tests/test_conformance.py
 git commit -m "feat(gym): register task variants and pass Gymnasium check_env"
 ```
@@ -4016,7 +4016,7 @@ Expected: every test passes.
 - [ ] **Step 7: Commit**
 
 ```bash
-cd ~/ActiveFence/propwash-fpv-sim
+cd "$REPO_ROOT"
 git add python/examples python/README.md
 git commit -m "docs(gym): examples, package README, and PPO smoke test"
 ```
