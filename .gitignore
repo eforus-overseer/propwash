@@ -1,3 +1,21 @@
 .DS_Store
 *.log
 node_modules/
+
+# Never commit chat transcripts / conversation logs to this repo.
+CONVERSATION.md
+CONVERSATION*.md
+*conversation*.md
+*conversation*.txt
+*conversation*.json
+*conversation*.jsonl
+*transcript*.md
+*transcript*.txt
+*transcript*.json
+*transcript*.jsonl
+*chatlog*
+*chat-log*
+conversations/
+transcripts/
+chat-logs/
+.claude/

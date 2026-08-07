@@ -5,7 +5,7 @@ A single-file FPV drone simulator: real satellite imagery, real elevation data, 
 **To fly it:** clone the repo and open `index.html` in a browser. No build step, no install.
 
 ```bash
-git clone https://github.com/eforus-overseer/propwash-fpv-sim.git && open propwash-fpv-sim/index.html
+git clone https://github.com/eforus-overseer/propwash.git && open propwash/index.html
 ```
 
 ![FPV flight through the Grand Canyon](docs/media/fpv-canyon-flight.gif)
