@@ -124,3 +124,11 @@ Ideas not yet built:
 5. Nearest-first routing for TARGET HUNT as an alternative to the current generation-order zigzag.
 6. Require rooftop targets to be touched from above rather than collected by proximity.
 7. Minimap, OSD wind indicator, and a follow-cam replay.
+
+---
+
+<!-- demo-lab:start -->
+## Explore this project
+
+[Project page & walkthrough](https://eforus-overseer.github.io/demo-lab/projects/propwash/) — Explore the project, its method, and available demos or original artifacts.
+<!-- demo-lab:end -->
